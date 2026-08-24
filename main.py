@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import requests
+from bs4 import BeautifulSoup
 
 app = FastAPI()
 
@@ -13,37 +14,29 @@ app.add_middleware(
 
 @app.get("/stock/{ticker}")
 def get_stock(ticker: str):
-    symbol = f"{ticker.upper()}.CA"
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=5d"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    
     try:
-        res = requests.get(url, headers=headers).json()
-        result = res['chart']['result'][0]
-        meta = result['meta']
+        symbol = ticker.upper().replace(".CA", "").strip()
+        url = f"https://www.mubasher.info/markets/EGX/stocks/{symbol}"
+        headers = {'User-Agent': 'Mozilla/5.0'}
         
-        current_price = round(meta['regularMarketPrice'], 2)
-        prev_close = round(meta['chartPreviousClose'], 2)
-        
-        margin = round(current_price * 0.012, 2)
-        min_price = round(current_price - margin, 2)
-        max_price = round(current_price + margin, 2)
-        
-        if current_price > prev_close:
-            rec = "شراء (اتجاه صاعد)"
-        elif current_price < prev_close:
-            rec = "بيع / حذر (اتجاه هابط)"
-        else:
-            rec = "احتفاظ (تذبذب عرضي)"
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return {"status": "error", "message": "السهم غير موجود على مباشر"}
 
-        return {
-            "status": "success",
-            "symbol": ticker.upper(),
-            "price": current_price,
-            "currency": "EGP",
-            "min_price": min_price,
-            "max_price": max_price,
-            "recommendation": rec
-        }
+        soup = BeautifulSoup(response.text, 'html.parser')
+        price_tag = soup.find('span', {'class': 'mi-market-pair-price'})
+        
+        if price_tag:
+            return {
+                "status": "success",
+                "symbol": symbol,
+                "price": price_tag.text.strip(),
+                "currency": "EGP",
+                "source": "Mubasher"
+            }
+        else:
+            return {"status": "error", "message": "تعذر قراءة السعر"}
+            
     except Exception as e:
-        return {"status": "error", "message": "تعذر سحب السهم"}
+        return {"status": "error", "message": str(e)}
+        

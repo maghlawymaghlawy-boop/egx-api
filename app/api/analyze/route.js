@@ -1,4 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -12,27 +11,47 @@ export async function POST(request) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'مفتاح GEMINI_API_KEY غير معرف في Vercel' }, { status: 500 });
+      return NextResponse.json({ error: 'مفتاح GEMINI_API_KEY غير معرف' }, { status: 500 });
     }
 
-    const ai = new GoogleGenAI({ apiKey });
     const bytes = await file.arrayBuffer();
     const base64Data = Buffer.from(bytes).toString('base64');
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        {
-          inlineData: {
-            mimeType: file.type || 'application/pdf',
-            data: base64Data,
-          },
-        },
-        'قم بتحليل تقرير البورصة المصرية المرفق واستخرج أهم البيانات والملخص منها بشكل منظم.',
-      ],
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: file.type || 'application/pdf',
+                    data: base64Data,
+                  },
+                },
+                {
+                  text: 'قم بتحليل تقرير البورصة المصرية المرفق واستخراج أهم البيانات والملخص منها بشكل منظم.',
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
 
-    return NextResponse.json({ success: true, result: response.text });
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json({ error: data.error?.message || 'فشل الاتصال بـ Gemini API' }, { status: response.status });
+    }
+
+    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'لم يتم استخراج نص';
+
+    return NextResponse.json({ success: true, result: resultText });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

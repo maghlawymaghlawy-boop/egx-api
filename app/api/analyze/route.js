@@ -1,3 +1,4 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -11,48 +12,28 @@ export async function POST(request) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'مفتاح GEMINI_API_KEY غير معرف في بيئة العمل' }, { status: 500 });
+      return NextResponse.json({ error: 'مفتاح GEMINI_API_KEY غير معرف' }, { status: 500 });
     }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const bytes = await file.arrayBuffer();
     const base64Data = Buffer.from(bytes).toString('base64');
 
-    // استخدام الرقم الدقيق والمعتمد للنموذج المستقر
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${apiKey}`,
+    const result = await model.generateContent([
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  inlineData: {
-                    mimeType: file.type || 'application/pdf',
-                    data: base64Data,
-                  },
-                },
-                {
-                  text: 'قم بتحليل تقرير البورصة المصرية المرفق واستخراج أهم البيانات والملخص منها بشكل منظم.',
-                },
-              ],
-            },
-          ],
-        }),
-      }
-    );
+        inlineData: {
+          mimeType: file.type || 'application/pdf',
+          data: base64Data,
+        },
+      },
+      'قم بتحليل تقرير البورصة المصرية المرفق واستخراج أهم البيانات والملخص منها بشكل منظم.',
+    ]);
 
-    const data = await response.json();
+    const responseText = result.response.text();
 
-    if (!response.ok) {
-      return NextResponse.json({ error: data.error?.message || 'فشل الاتصال بـ Gemini API' }, { status: response.status });
-    }
-
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'لم يتم استخراج نص';
-
-    return NextResponse.json({ success: true, result: resultText });
+    return NextResponse.json({ success: true, result: responseText });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

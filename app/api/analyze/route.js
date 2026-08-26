@@ -11,14 +11,15 @@ export async function POST(request) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'مفتاح GEMINI_API_KEY غير معرف' }, { status: 500 });
+      return NextResponse.json({ error: 'مفتاح GEMINI_API_KEY غير معرف في بيئة العمل' }, { status: 500 });
     }
 
     const bytes = await file.arrayBuffer();
     const base64Data = Buffer.from(bytes).toString('base64');
 
+    // استخدام النموذج المستقر gemini-2.5-flash
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

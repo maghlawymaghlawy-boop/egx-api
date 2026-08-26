@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -12,28 +12,27 @@ export async function POST(request) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'مفتاح GEMINI_API_KEY غير معرف' }, { status: 500 });
+      return NextResponse.json({ error: 'مفتاح GEMINI_API_KEY غير معرف في Vercel' }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
+    const ai = new GoogleGenAI({ apiKey });
     const bytes = await file.arrayBuffer();
     const base64Data = Buffer.from(bytes).toString('base64');
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: file.type || 'application/pdf',
-          data: base64Data,
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          inlineData: {
+            mimeType: file.type || 'application/pdf',
+            data: base64Data,
+          },
         },
-      },
-      'قم بتحليل تقرير البورصة المصرية المرفق واستخراج أهم البيانات والملخص منها بشكل منظم.',
-    ]);
+        'قم بتحليل تقرير البورصة المصرية المرفق واستخرج أهم البيانات والملخص منها بشكل منظم.',
+      ],
+    });
 
-    const responseText = result.response.text();
-
-    return NextResponse.json({ success: true, result: responseText });
+    return NextResponse.json({ success: true, result: response.text });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

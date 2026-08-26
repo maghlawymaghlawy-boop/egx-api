@@ -17,9 +17,9 @@ export async function POST(request) {
     const bytes = await file.arrayBuffer();
     const base64Data = Buffer.from(bytes).toString('base64');
 
-    // استخدام الـ Stable API v1 المباشر مع gemini-1.5-flash
+    // استخدام الرقم الدقيق والمعتمد للنموذج المستقر
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
